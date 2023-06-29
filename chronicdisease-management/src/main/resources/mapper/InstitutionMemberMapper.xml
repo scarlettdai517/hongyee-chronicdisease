@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.InstitutionMemberMapper">
+
+    <sql id="Institution_Member_Column">
+        institution_member_id, institution_id, member_id, create_time, update_time
+    </sql>
+
+    <insert id="insertBatchList">
+        insert into institution_member
+        (
+            <trim suffix="" suffixOverrides=",">
+                <include refid="Institution_Member_Column"/>
+            </trim>
+        )
+        values
+        <foreach item="item" collection="list" open="" separator="," close="">
+            (
+                <trim suffix="" suffixOverrides=",">
+                    #{item.institutionMemberId}, #{item.institutionId}, #{item.memberId}, #{item.createTime}, #{item.updateTime},
+                </trim>
+            )
+        </foreach>
+    </insert>
+
+</mapper>

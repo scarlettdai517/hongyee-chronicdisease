@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.MemberDeviceMapper">
+
+    <sql id="Member_Device_Column">
+        member_device_id, member_id, member_name, device_Ident, start_time, end_time, create_time, update_time
+    </sql>
+
+    <select id="queryMemberDeviceInfo" resultType="com.jointcorp.chronicdisease.data.resp.deviceresp.MemberDeviceInfoResp">
+        SELECT md.member_id AS memberId, md.device_Ident AS deviceIdent, d.device_name AS deviceName,
+               (CASE d.online_state WHEN true THEN "在线" ELSE "离线" END) AS onlineState
+        FROM member_device AS md
+        LEFT JOIN device AS d ON d.device_id = d.device_id
+        WHERE member_id = #{memberId}
+        AND d.deleted_state = false
+        GROUP BY md.member_id, md.device_Ident
+    </select>
+
+
+    <insert id="batchInsertList" parameterType="java.util.List">
+        insert into member_device
+        (
+        <trim suffix="" suffixOverrides=",">
+            <include refid="Member_Device_Column"/>
+        </trim>
+        )
+        values
+        <foreach item="item" collection="list" open="" separator="," close="">
+            (
+            <trim suffix="" suffixOverrides=",">
+                #{item.memberDeviceId}, #{item.memberId}, #{item.memberName}, #{item.deviceIdent}, #{item.startTime},
+                #{item.endTime}, #{item.createTime}, #{item.updateTime}
+            </trim>
+            )
+        </foreach>
+    </insert>
+
+    <update id="updateBindingEndTime">
+        update member_device
+        set end_time = now(), update_time = now()
+        where device_ident = #{deviceIdent} and end_time is null
+    </update>
+
+    <update id="batchUpdateBindingEndTime">
+        update member_device
+        set end_time = now(), update_time = now()
+        where end_time is null
+        and device_ident in
+        <foreach item="deviceIdent" collection="deviceIdentList" index="index" open="(" separator="," close=")">
+            #{deviceIdent}
+        </foreach>
+    </update>
+
+</mapper>

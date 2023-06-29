@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.DeviceMapper">
+
+    <resultMap id="BaseResultMap" type="com.jointcorp.chronicdisease.data.resp.deviceresp.DeviceListResp">
+        <id column="device_id" property="deviceId" />
+        <result column="device_ident" property="deviceIdent" />
+        <result column="device_name" property="deviceName" />
+        <result column="device_type_code" property="deviceTypeCode" />
+        <result column="device_model_key" property="deviceModelKey" />
+        <result column="active_state" property="activeState" />
+        <result column="online_state" property="onlineState" />
+        <result column="institution_id" property="institutionId" />
+        <result column="institution_name" property="institutionName" />
+        <result column="member_id" property="memberId" />
+        <result column="member_name" property="memberName" />
+    </resultMap>
+
+    <sql id="Device_Column">
+        device_id, device_type_code, device_model_key, device_ident, device_name, active_state, online_state,
+        deleted_state, create_time, update_time
+    </sql>
+
+    <sql id="Device_Resp_Column">
+        device_id, d.device_ident, device_name, device_type_code, device_model_key, active_state, online_state,
+        institution_id, institution_name, member_id, member_name
+    </sql>
+
+    <select id="selectDeviceList" parameterType="java.util.List" resultMap="BaseResultMap">
+        SELECT <include refid="Device_Resp_Column"/>
+        FROM device AS d
+        LEFT JOIN device_bind_institution AS dbi ON d.device_ident = dbi.device_ident and dbi.binding_state = 1
+        LEFT JOIN member_device as mbd ON d.device_ident = mbd.device_ident and mbd.end_time is null
+        <where>
+            d.deleted_state = false
+            <if test="req.deviceId != null">
+                AND d.device_Id like concat('%', #{req.deviceId}, '%')
+            </if>
+            <if test="req.deviceIdent != null and req.deviceIdent != ''">
+                AND d.device_ident like concat('%', #{req.deviceIdent}, '%')
+            </if>
+            AND d.device_ident IN
+            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                #{deviceIdent}
+            </foreach>
+            <if test="req.deviceTypeCode != null and req.deviceTypeCode != ''">
+                AND d.device_type_code = #{req.deviceTypeCode}
+            </if>
+            <if test="req.deviceModelKey != null">
+                AND d.device_model_key = #{req.deviceModelKey}
+            </if>
+            <if test="req.deviceName != null and req.deviceName != ''">
+                AND d.device_name like concat('%', #{req.deviceName}, '%')
+            </if>
+            <if test="req.onlineState != null">
+                AND d.online_state = #{req.onlineState}
+            </if>
+            <if test="req.startTime != null">
+                AND d.create_time <![CDATA[>=]]> #{req.startTime}
+            </if>
+            <if test="req.endTime != null">
+                AND d.create_time <![CDATA[<=]]> #{req.endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="IncrDeviceCountFromDay" resultType="java.lang.Integer">
+        SELECT count(device_ident)
+        FROM device
+        WHERE
+            deleted_state = 0
+            AND create_Time <![CDATA[>=]]> #{localDateTime}
+            AND device_ident IN
+            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                #{deviceIdent}
+            </foreach>
+    </select>
+
+    <select id="deviceTotalNumWithDay" resultType="java.lang.Integer">
+        SELECT DISTINCT COUNT(device_id) as count
+        FROM device
+        <where>
+            deleted_state = 0
+            AND create_time <![CDATA[<=]]> #{endTime}
+            AND device_ident IN
+            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                #{deviceIdent}
+            </foreach>
+        </where>
+    </select>
+
+<!--    <select id="deviceAmountWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">-->
+<!--        SELECT DATE_FORMAT(create_time, '%Y-%m-%d') as date, COUNT(device_id) as count-->
+<!--        FROM `device`-->
+<!--        <where>-->
+<!--            deleted_state = 0-->
+<!--            AND create_time between #{startTime} and #{endTime}-->
+<!--            AND device_ident IN-->
+<!--            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">-->
+<!--                #{deviceIdent}-->
+<!--            </foreach>-->
+<!--        </where>-->
+<!--        GROUP BY date-->
+<!--        ORDER BY date-->
+<!--    </select>-->
+
+    <select id="deviceIncrNumWithDay" resultType="java.lang.Integer">
+        SELECT count(device_ident)
+        FROM device
+        WHERE
+        deleted_state = 0
+        AND create_Time between #{startTime} and #{endTime}
+        AND device_ident IN
+        <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+            #{deviceIdent}
+        </foreach>
+    </select>
+
+    <select id="deviceIncrNumWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">
+        SELECT DATE_FORMAT(create_time, '%Y-%m-%d') as date, COUNT(device_id) as count
+        FROM device
+        WHERE
+        deleted_state = 0
+        AND create_time between #{startTime} and #{endTime}
+        AND device_ident IN
+        <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+            #{deviceIdent}
+        </foreach>
+        GROUP BY date
+        ORDER BY date
+    </select>
+
+
+    <select id="selectByCodeAndDate" resultType="java.lang.String">
+        SELECT device_ident
+        FROM device AS d
+        <where>
+            deleted_state = false
+            <if test="deviceTypeCode != null and deviceTypeCode != ''">
+                AND device_type_code = #{deviceTypeCode}
+            </if>
+            <if test="queryEndTime != null and queryEndTime != ''">
+                AND create_time <![CDATA[<=]]> #{queryEndTime}
+            </if>
+            AND d.device_ident IN
+            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                #{deviceIdent}
+            </foreach>
+        </where>
+    </select>
+
+    <select id="deviceOnlineNumWithDay" resultType="java.lang.Integer">
+        SELECT COUNT(distinct device_ident) AS count
+        FROM `integrated_machine`
+        WHERE
+        device_ident IN
+        <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+            #{deviceIdent}
+        </foreach>
+        AND time between #{startTime} and #{endTime}
+    </select>
+
+    <select id="deviceOnlineNumWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">
+        SELECT DATE_FORMAT(time, '%Y-%m-%d') AS date, COUNT(distinct device_ident) AS count
+        FROM `integrated_machine`
+        WHERE
+            device_ident IN
+            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                #{deviceIdent}
+            </foreach>
+        AND time between #{startTime} and #{endTime}
+        GROUP BY date
+        ORDER BY date
+    </select>
+
+    <select id="deviceActiveNumWithDay" resultType="java.lang.Integer">
+        SELECT count(DISTINCT deviceIdent)
+        FROM
+            (
+                SELECT
+                    onlineTime, deviceIdent,
+                    IF(onlineTime = @priorTime, @num := @num + 1, @num := 1),
+                    IF(deviceIdent != @last_deviceIdent, @num := 1, 1),
+                    @num AS onlineCount,
+                    @priorTime := (DATE_ADD( onlineTime, INTERVAL 1 DAY )),
+                    @last_deviceIdent := deviceIdent
+                FROM
+                    (
+                        SELECT DISTINCT DATE_FORMAT( time, '%Y-%m-%d' ) AS onlineTime, device_ident as deviceIdent
+                        FROM integrated_machine
+                        WHERE device_ident IN
+                            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                                #{deviceIdent}
+                            </foreach>
+                        AND time between #{startTime} and #{endTime}
+                        ORDER BY deviceIdent, onlineTime
+                    ) AS origin,
+                    ( SELECT @last_deviceIdent := '', @num := 0, @priorTime = '' ) AS b
+                ORDER BY
+                    deviceIdent, onlineTime
+            ) AS onlineDate
+        WHERE onlineCount <![CDATA[>=]]> 3
+    </select>
+
+
+    <select id="deviceActiveNumWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">
+        SELECT onlineTime as date, count(*) as count
+        FROM
+            (
+                SELECT
+                    onlineTime, deviceIdent,
+                    IF(onlineTime = @priorTime, @num := @num + 1, @num := 1),
+                    IF(deviceIdent != @last_deviceIdent, @num := 1, 1),
+                    @num AS onlineCount,
+                    @priorTime := (DATE_ADD( onlineTime, INTERVAL 1 DAY )),
+                    @last_deviceIdent := deviceIdent
+                FROM
+                    (
+                        SELECT DISTINCT DATE_FORMAT( time, '%Y-%m-%d' ) AS onlineTime, device_ident as deviceIdent
+                        FROM integrated_machine
+                        WHERE device_ident IN
+                            <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                                #{deviceIdent}
+                            </foreach>
+                        AND time between #{startTime} and #{endTime}
+                        ORDER BY deviceIdent, onlineTime
+                    ) AS origin,
+                    ( SELECT @last_deviceIdent := '', @num := 0, @priorTime = '' ) AS b
+                ORDER BY
+                    deviceIdent, onlineTime
+            ) AS onlineDate
+        WHERE onlineCount <![CDATA[>=]]> 3
+        GROUP BY onlineTime
+    </select>
+
+    <select id="selectDeviceRegion" resultType="com.jointcorp.chronicdisease.data.resp.statictisresp.PartitionAmountResp">
+        SELECT substring(province_name, 1, 2) AS region, amount, CONCAT(ROUND(amount/#{total}*100, 1), '%') AS per
+        FROM institution i
+        RIGHT JOIN
+             (
+                 SELECT institution_id, count(*) as amount
+                 FROM device_bind_institution
+                 WHERE binding_state = 1
+                   AND device_ident IN
+                    <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                        #{deviceIdent}
+                    </foreach>
+                 GROUP BY institution_id
+             ) AS inst
+        ON i.institution_id = inst.institution_id
+        GROUP BY region, amount, per
+    </select>
+
+    <select id="queryDeviceStatisticByRegion"
+            resultType="com.jointcorp.chronicdisease.data.resp.statictisresp.StatisticByPartitionResp">
+        SELECT substring(totalAndIncr.region, 1, 2) AS partitionName, total AS totalAmount, incr AS incrAmount,
+               online AS onlineAmount, active AS activeAmount
+        FROM
+            (
+                SELECT region, count(deviceIdent) as total, sum(incrCount) as incr
+                FROM
+                    (
+                    SELECT dbi.device_ident as deviceIdent, province_name as region, d.create_time AS createTime,
+                            IF(d.create_time BETWEEN #{startTime} and #{endTime}, 1, 0) as incrCount
+                    FROM device_bind_institution AS dbi
+                    LEFT JOIN institution i ON i.institution_id = dbi.institution_id
+                    LEFT JOIN device d ON d.device_ident = dbi.device_ident
+                    WHERE binding_state = 1
+                    AND dbi.device_ident IN
+                        <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                            #{deviceIdent}
+                        </foreach>
+                    AND d.create_time <![CDATA[<=]]> #{endTime}
+                    ) as result
+                GROUP BY region
+                ORDER BY region
+            ) as totalAndIncr
+        LEFT JOIN
+            (
+                SELECT region, sum(online) as online, sum(active) as active
+                FROM
+                    (
+                    SELECT deviceIdent, province_name as region, if (sum(onlineCount) > 0, 1, 0) as online,
+                            if (sum(if(activeCount <![CDATA[>=]]> 3, 1, 0)), 1, 0) as active
+                    FROM
+                        (
+                        SELECT deviceIdent, time,
+                                IF(time BETWEEN #{startTime} and #{endTime}, 1, 0) as onlineCount,
+                                IF(deviceIdent = @last_deviceIdent and onlineTime = @priorTime, @num := @num+1, @num := 1) as activeCount,
+                                @last_deviceIdent := deviceIdent,
+                                @priorTime := (DATE_ADD( onlineTime, INTERVAL 1 DAY ))
+                        FROM
+                            (
+                            SELECT DISTINCT DATE_FORMAT( time, '%Y-%m-%d' ) AS onlineTime, device_ident as deviceIdent, time
+                            FROM integrated_machine
+                            where time BETWEEN (DATE_ADD( #{startTime}, INTERVAL -2 DAY )) and #{endTime}
+                            AND device_ident IN
+                                <foreach item="deviceIdent" collection="deviceIdents" index="index" open="(" separator="," close=")">
+                                    #{deviceIdent}
+                                </foreach>
+                            ORDER BY deviceIdent, onlineTime
+                            ) as origin,
+                            (SELECT @last_deviceIdent := '', @num := 0, @priorTime = '' ) AS b
+                        ) as result1
+                    LEFT JOIN device_bind_institution AS dbi ON deviceIdent = dbi.device_ident
+                    LEFT JOIN institution i ON i.institution_id = dbi.institution_id
+                    GROUP BY deviceIdent
+                    ) as result2
+                GROUP BY region
+            ) AS onlineAndActice
+        ON totalAndIncr.region = onlineAndActice.region
+        GROUP BY region
+        ORDER BY region
+    </select>
+
+    <insert id="insertDeviceList" parameterType="java.util.List">
+        insert into device
+            (
+                <trim suffix="" suffixOverrides=",">
+                    <include refid="Device_Column"/>
+                </trim>
+            )
+        values
+        <foreach item="device" collection="deviceList" open="" separator="," close="">
+            (
+                <trim suffix="" suffixOverrides=",">
+                    #{device.deviceId}, #{device.deviceTypeCode}, #{device.deviceModelKey}, #{device.deviceIdent},
+                    #{device.deviceName}, #{device.activeState}, #{device.onlineState}, #{device.deletedState},
+                    #{device.createTime}, #{device.updateTime},
+                </trim>
+            )
+        </foreach>
+    </insert>
+
+</mapper>

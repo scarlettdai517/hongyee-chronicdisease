@@ -1,0 +1,45 @@
+
+spring:
+  application:
+    name: chronicdisease
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  profiles:
+    active: loc
+
+
+mybatis:
+  mapperLocations: classpath:mapper/*.xml
+
+#tk.mapper
+mapper:
+  mappers: com.jointcorp.chronicdisease.platform.base.BaseMapper
+  not-empty: false
+  identity: MYSQL
+
+pagehelper:
+  helperDialect: mysql
+  reasonable: false
+  supportMethodsArguments: true
+  params: count=countSql
+
+
+jointcorp:
+  parent:
+    ossExceptionLogPath: exLogs/chronicdisease/
+
+appconf:
+  workerId: 1
+  ossDataFilePath: chronicdisease/
+  ossLogFilePath: logs/chronicdisease/
+  activePeriod: 3
+  onlinePeriod: 7
+#  tokenExpire: 1
+
+
+thread:
+  coreSize: 2
+  maxSize: 5
+  keepAliveTime: 10
+  dequeSize: 100

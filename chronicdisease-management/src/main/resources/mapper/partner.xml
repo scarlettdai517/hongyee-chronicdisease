@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.PartnerMapper">
+
+	<select id="selectPartner" resultType="com.jointcorp.chronicdisease.data.po.Partner">
+		select partner_id AS partnerId,partner_name AS partnerName,contactor, country_code AS countryCode, user_id as userId
+		from partner where partner_id = #{partnerId}
+	</select>
+	<select id="selectAllPartnerIdList"
+			resultType="com.jointcorp.chronicdisease.data.resp.resourceresp.PartnerIdResp">
+		select partner_id AS partnerId,partner_name AS partnerName from partner
+	</select>
+
+
+</mapper>

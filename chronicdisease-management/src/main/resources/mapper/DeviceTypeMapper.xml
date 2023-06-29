@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.DeviceTypeMapper">
+
+
+<!--    <select id="typeBindingCount" resultType="java.lang.Integer">-->
+<!--        SELECT count(dt.device_type_code)-->
+<!--        FROM `device_model` AS dm-->
+<!--        LEFT JOIN device_type AS dt-->
+<!--            ON dt.device_type_code = dm.device_type_code-->
+<!--        WHERE dt.device_type_id = #{deviceTypeId}-->
+<!--    </select>-->
+</mapper>

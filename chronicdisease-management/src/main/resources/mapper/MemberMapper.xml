@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.MemberMapper">
+
+    <sql id="Member_Column">
+        member_id, member_name, gender, birthday, email, phone, password, weight, stature, open_id, plat_name, avatar,
+        address, id_card, remark, create_time, update_time
+    </sql>
+
+    <sql id="Member_Import_Column">
+        member_id, member_name, gender, birthday, phone, address, id_card, remark, create_time, update_time
+    </sql>
+
+    <select id="queryMemberInfo" resultType="com.jointcorp.chronicdisease.data.resp.memberResp.MemberQueryResp">
+        SELECT DISTINCT im.member_id AS memberId, m.member_name AS memberName, birthday, phone, i.institution_id AS institutionId,
+               i.institution_name AS institutionName, address, id_card AS idCard, count(md.member_id) AS deviceCount,
+               m.create_time AS registrationTime, m.remark,
+                (CASE WHEN gender = "male" THEN "男" WHEN gender = "female" THEN "女" ELSE "未知" END) AS gender
+        FROM institution_member AS im
+        LEFT JOIN member_device AS md ON md.member_id = im.member_id and md.end_time is null
+        LEFT JOIN member AS m ON m.member_id = im.member_id
+        LEFT JOIN institution AS i ON im.institution_id = i.institution_id
+        <where>
+<!--            m.member_id IN-->
+<!--            <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">-->
+<!--                #{memberId}-->
+<!--            </foreach>-->
+            im.institution_id IN
+            <foreach item="institutionId" collection="institutionIdList" index="index" open="(" separator="," close=")">
+                #{institutionId}
+            </foreach>
+            <if test="req.memberId != null">
+                AND m.member_id like concat('%', #{req.memberId}, '%')
+            </if>
+            <if test="req.phone != null and req.phone != ''">
+                AND (m.phone like concat('%', #{req.phone}, '%')
+                OR m.member_name like concat('%', #{req.phone}, '%'))
+            </if>
+            <if test="req.startTime != null and req.startTime != '' and req.endTime != null and req.endTime != ''">
+                AND m.create_time BETWEEN #{req.startTime} AND #{req.endTime}
+            </if>
+        </where>
+        GROUP BY memberId
+        ORDER BY institutionName DESC
+    </select>
+
+    <insert id="insertMemberList" parameterType="java.util.List">
+        insert into member
+        (
+            <trim suffix="" suffixOverrides=",">
+                <include refid="Member_Import_Column"/>
+            </trim>
+        )
+        values
+        <foreach item="item" collection="memberList" open="" separator="," close="">
+            (
+            <trim suffix="" suffixOverrides=",">
+                #{item.memberId}, #{item.memberName}, #{item.gender}, #{item.birthday}, #{item.phone},
+                #{item.address}, #{item.idCard}, #{item.remark}, #{item.createTime}, #{item.updateTime}
+            </trim>
+            )
+        </foreach>
+    </insert>
+
+    <select id="getMemberIdListByInst" resultType="java.lang.Long">
+        SELECT DISTINCT member_id AS memberId
+        FROM institution_member
+        WHERE institution_id IN
+            <foreach item="institutionId" collection="institutionIdList" index="index" open="(" separator="," close=")">
+                #{institutionId}
+            </foreach>
+    </select>
+
+</mapper>

@@ -1,0 +1,42 @@
+server:
+  port: 5604
+
+spring:
+  datasource:
+    url: jdbc:mysql://192.168.0.111:3306/hongyee_health?serverTimezone=Asia/Shanghai&useSSL=false&allowMultiQueries=true
+    username: ENC(/lXBFbslJkThkrWwwY30cgSRWLEv5Rhq)
+    password: ENC(zzFrQZ5rWHiNtQ7TsauhZgQ6mpJp0bPW)
+
+eureka:
+  client:
+    #是否注册到eureka
+    register-with-eureka: true
+    serviceUrl:
+      defaultZone: http://eurekauser:jc~eu30991A@192.168.0.111:8761/eureka
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${server.port}}
+    #续约时间，该时间越小，那么新注册的服务，就越快的能被访问到
+    lease-renewal-interval-in-seconds: 5
+    #过期时间
+    lease-expiration-duration-in-seconds: 10
+
+redisson:
+  address: redis://192.168.0.111:6379
+  password:
+
+jointcorp:
+  parent:
+    debug: true
+    ossBucketName: szjointcorptest
+    ossEndpoint: oss-cn-shenzhen.aliyuncs.com
+
+appconf:
+  remoteHost: http://192.168.0.111:8090/outside-service-local
+  usercenter: https://hkapp.jointcorp.cloud/jcloud/user
+
+logging:
+  config: classpath:logback-spring.xml
+  logPath: /server/jar/logs/hongyee-mina
+  #不带扩展名
+  logName: hongyee-mina

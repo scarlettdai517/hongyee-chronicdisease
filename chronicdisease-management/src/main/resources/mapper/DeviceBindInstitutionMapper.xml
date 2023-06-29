@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.DeviceBindInstitutionMapper">
+
+    <sql id="Device_Bind_Institution_Column">
+        id, device_ident, institution_id, binding_state, institution_name, create_time, update_time
+    </sql>
+
+    <update id="unbindDeviceAndInstitution">
+        update device_bind_institution
+        set binding_state = false
+        where device_ident = #{deviceIdent}
+    </update>
+
+    <insert id="insertBatchList">
+        insert into device_bind_institution
+        (
+            <trim suffix="" suffixOverrides=",">
+                <include refid="Device_Bind_Institution_Column"/>
+            </trim>
+        )
+        values
+        <foreach item="item" collection="list" open="" separator="," close="">
+            (
+                <trim suffix="" suffixOverrides=",">
+                    #{item.id}, #{item.deviceIdent}, #{item.institutionId}, #{item.bindingState}, #{item.institutionName},
+                    #{item.createTime}, #{item.updateTime},
+                </trim>
+            )
+        </foreach>
+    </insert>
+
+    <!--30天以内-->
+    <select id="selectDeviceRecentlyused" resultType="com.jointcorp.chronicdisease.data.po.device.DeviceBindInstitution">
+        SELECT institution_id AS institutionId,device_ident AS deviceIdent FROM device_bind_institution WHERE binding_state = 1 AND device_ident IN
+        <![CDATA[
+        (SELECT DISTINCT(device_ident) FROM integrated_machine WHERE DATE_SUB(CURDATE(), INTERVAL 30 DAY) <= DATE(time))
+        	]]>
+    </select>
+
+</mapper>

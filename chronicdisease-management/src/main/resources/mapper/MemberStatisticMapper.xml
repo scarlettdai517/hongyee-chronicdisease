@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.MemberStatisticMapper">
+
+    <select id="memberTotalNumWithDay" resultType="java.lang.Integer">
+        SELECT COUNT(DISTINCT member_id) as count
+        FROM member
+        <where>
+            create_time <![CDATA[<=]]> #{endTime}
+            AND member_id IN
+            <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                #{memberId}
+            </foreach>
+        </where>
+    </select>
+
+    <select id="memberIncrNumWithDay" resultType="java.lang.Integer">
+        SELECT count(member_id)
+        FROM member
+        WHERE
+            create_Time between #{startTime} and #{endTime}
+            AND member_id IN
+                <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                    #{memberId}
+                </foreach>
+    </select>
+
+    <select id="memberIncrNumWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">
+        SELECT DATE_FORMAT(create_time, '%Y-%m-%d') as date, COUNT(member_id) as count
+        FROM member
+        <where>
+            create_time between #{startTime} and #{endTime}
+            AND member_id IN
+            <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                #{memberId}
+            </foreach>
+        </where>
+        GROUP BY date
+        ORDER BY date
+    </select>
+
+    <select id="memberOnlineNumWithDay" resultType="java.lang.Integer">
+        SELECT COUNT(distinct member_id) AS count
+        FROM `integrated_machine`
+        WHERE
+            time between #{startTime} and #{endTime}
+            AND member_id IN
+            <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                #{memberId}
+            </foreach>
+            <if test="deviceTypeCode != null and deviceTypeCode != ''">
+                AND device_type_code like concat('%', #{deviceTypeCode}, '%')
+            </if>
+    </select>
+
+    <select id="memberOnlineNumWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">
+        SELECT DATE_FORMAT(time, '%Y-%m-%d') AS date, COUNT(distinct member_id) AS count
+        FROM `integrated_machine`
+        WHERE
+            member_id IN
+                <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                    #{memberId}
+                </foreach>
+            AND time between #{startTime} and #{endTime}
+            <if test="deviceTypeCode != null and deviceTypeCode != ''">
+                AND device_type_code like concat('%', #{deviceTypeCode}, '%')
+            </if>
+        GROUP BY date
+        ORDER BY date
+    </select>
+
+    <select id="memberActiveNumWithDay" resultType="java.lang.Integer">
+        SELECT count(DISTINCT memberId)
+        FROM
+            (
+                SELECT
+                    onlineTime, memberId,
+                    IF(memberId = @last_memberId and onlineTime = @priorTime, @num := @num+1, @num := 1),
+                    @num AS onlineCount,
+                    @priorTime := (DATE_ADD( onlineTime, INTERVAL 1 DAY )),
+                    @last_memberId := memberId
+                FROM
+                    (
+                        SELECT DISTINCT DATE_FORMAT( time, '%Y-%m-%d' ) AS onlineTime, member_id as memberId
+                        FR OM integrated_machine
+                        WHERE member_id IN
+                            <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                                #{memberId}
+                            </foreach>
+                        AND time between #{startTime} and #{endTime}
+                        <if test="deviceTypeCode != null and deviceTypeCode != ''">
+                            AND device_type_code like concat('%', #{deviceTypeCode}, '%')
+                        </if>
+                        ORDER BY memberId, onlineTime
+                    ) AS origin,
+                    (SELECT @last_memberId := '', @num := 0, @priorTime = '' ) AS b
+                ORDER BY
+                    memberId, onlineTime
+            ) AS onlineDate
+        WHERE onlineCount <![CDATA[>=]]> 3
+    </select>
+
+    <select id="memberActiveNumWithDate" resultType="com.jointcorp.chronicdisease.data.po.device.statistics.DateAmount">
+        SELECT onlineTime as date, count(*) as count
+        FROM
+            (
+                SELECT
+                    onlineTime, memberId,
+                    IF(onlineTime = @priorTime, @num := @num + 1, @num := 1),
+                    IF(memberId != @last_memberId, @num := 1, 1),
+                    @num AS onlineCount,
+                    @priorTime := (DATE_ADD( onlineTime, INTERVAL 1 DAY )),
+                    @last_memberId := memberId
+                FROM
+                    (
+                        SELECT DISTINCT DATE_FORMAT( time, '%Y-%m-%d' ) AS onlineTime, member_id as memberId
+                        FROM integrated_machine
+                        WHERE member_id IN
+                        <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                            #{memberId}
+                        </foreach>
+                        AND time between #{startTime} and #{endTime}
+                        <if test="deviceTypeCode != null and deviceTypeCode != ''">
+                            AND device_type_code like concat('%', #{deviceTypeCode}, '%')
+                        </if>
+                        ORDER BY memberId, onlineTime
+                    ) AS origin,
+                    (   SELECT @last_deviceIdent := '', @num := 0, @priorTime = '' ) AS b
+                ORDER BY memberId, onlineTime
+            ) AS onlineDate
+        WHERE onlineCount <![CDATA[>=]]> 3
+        GROUP BY onlineTime
+    </select>
+
+    <select id="selectMemberAgeNum"
+            resultType="com.jointcorp.chronicdisease.data.resp.statictisresp.PartitionAmountResp">
+        SELECT (CASE
+                    WHEN age BETWEEN 0 AND 6 THEN "婴幼儿(0-6岁)"
+                    WHEN age BETWEEN 7 AND 12 THEN "少儿(7-12岁)"
+                    WHEN age BETWEEN 13 AND 17 THEN "青少年(13-17岁)"
+                    WHEN age BETWEEN 18 AND 45 THEN "青年(18-45)"
+                    WHEN age BETWEEN 46 AND 69 THEN "中年(46-69岁)"
+                    ELSE "老年(大于69岁)"
+            END) as ageGroup,
+               count(DISTINCT member_id) as amount, CONCAT(ROUND(count(DISTINCT member_id)/#{memberIdList.size}*100, 1), '%') AS per
+        FROM member m
+        <where>
+            member_id IN
+            <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                #{memberId}
+            </foreach>
+            AND create_time <![CDATA[<=]]> #{endTime}
+        </where>
+        GROUP BY ageGroup
+    </select>
+
+
+    <select id="queryMemberStatisticByAge"
+            resultType="com.jointcorp.chronicdisease.data.resp.statictisresp.StatisticByPartitionResp">
+        SELECT totalAndIncr.ageGroup as partitionName, total AS totalAmount, incr AS incrAmount,
+                if(online is null, 0, online) AS onlineAmount,  if(active is null, 0, active) AS activeAmount
+        FROM
+            (
+                SELECT ageGroup, count(member_id) as total, sum(incrCount) as incr
+                FROM
+                (
+                    SELECT member_id, member_name, age, create_time AS createTime,
+                            IF(create_time between #{startTime} and #{endTime}, 1, 0) as incrCount,
+                            (CASE
+                                WHEN age BETWEEN 0 AND 6 THEN "婴幼儿(0-6岁)"
+                                WHEN age BETWEEN 7 AND 12 THEN "少儿(7-12岁)"
+                                WHEN age BETWEEN 13 AND 17 THEN "青少年(13-17岁)"
+                                WHEN age BETWEEN 18 AND 45 THEN "青年(18-45)"
+                                WHEN age BETWEEN 46 AND 69 THEN "中年(46-69岁)"
+                                ELSE "老年(大于69岁)"
+                            END) as ageGroup
+                    FROM member
+                    <where>
+                        member_id IN
+                        <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                            #{memberId}
+                        </foreach>
+                        AND create_time <![CDATA[<=]]> #{endTime}
+                    </where>
+                    ORDER BY ageGroup desc
+                ) as result
+                GROUP BY ageGroup
+                ORDER BY ageGroup
+            ) as totalAndIncr
+        LEFT JOIN
+            (
+                SELECT ageGroup, sum(online) as online, sum(active) as active
+                FROM
+                (
+                    SELECT memberId, if (sum(onlineCount) > 0, 1, 0) as online, if (sum(if(activeCount >= 3, 1, 0)), 1, 0) as active,
+                            (CASE
+                                WHEN age BETWEEN 0 AND 6 THEN "婴幼儿(0-6岁)"
+                                WHEN age BETWEEN 7 AND 12 THEN "少儿(7-12岁)"
+                                WHEN age BETWEEN 13 AND 17 THEN "青少年(13-17岁)"
+                                WHEN age BETWEEN 18 AND 45 THEN "青年(18-45)"
+                                WHEN age BETWEEN 46 AND 69 THEN "中年(46-69岁)"
+                                ELSE "老年(大于69岁)"
+                            END) as ageGroup
+                    FROM
+                    (
+                        SELECT memberId, time,
+                                IF(time between #{startTime} and #{endTime}, 1, 0) as onlineCount,
+                                IF(memberId = @last_member and onlineTime = @priorTime, @num := @num+1, @num := 1) as activeCount,
+                                @last_member := memberId,
+                                @priorTime := (DATE_ADD( onlineTime, INTERVAL 1 DAY ))
+                        FROM
+                        (
+                            SELECT DISTINCT DATE_FORMAT( time, '%Y-%m-%d' ) AS onlineTime, member_id as memberId, time
+                            FROM integrated_machine
+                            <where>
+                                member_id IN
+                                <foreach item="memberId" collection="memberIdList" index="index" open="(" separator="," close=")">
+                                    #{memberId}
+                                </foreach>
+                                AND time between #{startTime} and #{endTime}
+                                <if test="deviceTypeCode != null and deviceTypeCode != ''">
+                                    AND device_type_code like concat('%', #{deviceTypeCode}, '%')
+                                </if>
+                            </where>
+                            ORDER BY memberId, onlineTime
+                        ) as origin,
+                        (SELECT @last_member := '', @num := 0, @priorTime = '' ) AS b
+                    ) as result1
+                    LEFT JOIN member AS m ON m.member_id = memberId
+                    GROUP BY memberId
+                ) as result2
+                GROUP BY ageGroup
+            ) AS onlineAndActice
+        ON totalAndIncr.ageGroup = onlineAndActice.ageGroup
+        GROUP BY partitionName
+        ORDER BY partitionName
+    </select>
+
+
+</mapper>

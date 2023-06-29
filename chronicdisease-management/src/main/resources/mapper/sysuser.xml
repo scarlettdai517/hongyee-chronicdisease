@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.SysUserMapper">
+    <update id="loginTimeUpdate">
+		update sys_user set last_login_time = now() where user_id = #{userId}
+	</update>
+	<update id="updatePasswordInt">
+		update sys_user set password = #{newPsw} where user_id = #{userId}
+	</update>
+	<update id="updateAccount">
+		update sys_user set email = #{email}, phone_number = #{phoneNumber}, country_code = #{countryCode}
+		where user_id = #{userId}
+	</update>
+    <update id="updateUserNameByInsName">
+		update sys_user set username = #{userName} where user_id = #{userId}
+	</update>
+	<update id="updateAccountStatusInt">
+		update sys_user set account_status = #{accountStatus} where user_id = #{userId}
+	</update>
+	<delete id="deleteTokenByUserIdInt">
+		delete from sys_user_token where user_id = #{userId}
+	</delete>
+
+	<select id="login" resultType="com.jointcorp.chronicdisease.data.po.SysUser">
+		select user_id as userId,username,phone_number as phoneNumber,country_code as countryCode, user_type as userType,
+		account_status as accountStatus,corporate_id as corporateId from sys_user
+		where password = #{password} and ((phone_number = #{phoneNumber} and country_code = #{countryCode}) or email = #{email})
+	</select>
+
+	<select id="selectUserByCorporateId" resultType="com.jointcorp.chronicdisease.data.po.SysUser">
+		select user_id as userId,username,phone_number as phoneNumber,country_code as countryCode, user_type as userType,
+			   account_status as accountStatus,corporate_id as corporateId from sys_user
+		where corporate_id = #{corporateId}
+	</select>
+
+
+    <select id="selectUserIdList" resultType="java.lang.Long">
+		select user_id as userId
+		from sys_user
+		where corporate_id IN (
+		<foreach collection="validIds" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+	</select>
+	<select id="selectAllUserId" resultType="java.lang.Long">
+		select user_id as userId
+		from sys_user
+	</select>
+	<select id="selectValidUser" resultType="com.jointcorp.chronicdisease.data.resp.SysUserAccountManageResp">
+		select user_id as userId,username,user_type as userType,
+		account_status as accountStatus,create_time as createTime, last_login_time as lastLoginTime
+		from sys_user
+		where user_id IN (
+		<foreach collection="userIdList" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+	</select>
+	<select id="selectPswById" resultType="java.lang.String">
+		select password from sys_user where user_id = #{userId}
+	</select>
+
+	<select id="selectLikeAllUser" resultType="com.jointcorp.chronicdisease.data.po.SysUser">
+		SELECT user_id AS userId,username,email,phone_number AS phoneNumber ,user_type AS userType,account_status AS accountStatus,
+		corporate_id AS corporateId,create_time AS createTime ,last_login_time AS lastLoginTime  FROM sys_user
+		<where>
+			<if test="accountStatus != null">
+				account_status = #{accountStatus} and
+			</if>
+			<if test="account != null">
+				(email LIKE '${account}%' OR phone_number LIKE '${account}%')
+			</if>
+
+		</where>
+	</select>
+
+	<select id="selectLikeAllUserByInts" resultType="com.jointcorp.chronicdisease.data.po.SysUser">
+		SELECT user_id AS userId,username,email,phone_number AS phoneNumber ,user_type AS userType,account_status AS accountStatus,
+		corporate_id AS corporateId,create_time AS createTime ,last_login_time AS lastLoginTime  FROM sys_user
+		<where>
+			corporate_id IN (
+			<foreach collection="ints" item="item" index="index" separator=",">
+				#{item}
+			</foreach>
+			)
+			<if test="accountStatus != null">
+				and account_status = #{accountStatus}
+			</if>
+			<if test="account != null">
+				and (email LIKE '${account}%' OR phone_number LIKE '${account}%')
+			</if>
+		</where>
+	</select>
+
+
+</mapper>

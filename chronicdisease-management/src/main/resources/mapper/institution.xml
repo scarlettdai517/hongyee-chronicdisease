@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.jointcorp.chronicdisease.platform.mapper.InstitutionMapper">
+
+	<select id="selectInstitution" resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		select institution_id AS institutionId,institution_name AS institutionName,contactor,contact_phone_number as contactPhoneNumber,  country_code AS countryCode, create_time as createTime
+		from institution where institution_id = #{institutionId}
+	</select>
+    <select id="selectByCreateTimeInstitutionList"
+            resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		select institution_id AS institutionId,institution_name AS institutionName,contactor,contact_phone_number as contactPhoneNumber, country_code AS countryCode, create_time as createTime
+		from institution where create_time >= #{create_time}
+
+	</select>
+	<select id="selectByNameAndProvince" resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		select institution_id AS institutionId,institution_name AS institutionName,contactor,contact_phone_number as contactPhoneNumber, country_code AS countryCode, create_time as createTime
+		from institution where institution_name = #{institutionName} AND province = #{province}
+
+	</select>
+	<select id="selectByNameAndTime" resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		select institution_id AS institutionId,institution_name AS institutionName,contactor,contact_phone_number as contactPhoneNumber, country_code AS countryCode, create_time as createTime
+		from institution where institution_name = #{institutionName} AND create_time >= #{create_time}
+	</select>
+
+	<select id="selectByProvinceAndTime" resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		select institution_id AS institutionId,institution_name AS institutionName,contactor,contact_phone_number as contactPhoneNumber, country_code AS countryCode, create_time as createTime
+		from institution where province = #{province} AND create_time >= #{create_time}
+	</select>
+
+	<select id="selectInstNumTotal" resultType="com.jointcorp.chronicdisease.data.resp.resourceresp.institution.InsNumIncr">
+		select count(1) as increment,create_day as createDay from institution where
+		institution_id IN (
+		<foreach collection="validIds" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+		and create_day BETWEEN #{monday} and #{sunday} GROUP BY create_day
+	</select>
+
+	<select id="selectSubInst" parameterType="java.util.List" resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		SELECT institution_id AS institutionId,parent_id AS parentId,partner_id AS partnerId FROM institution WHERE
+		parent_id IN (
+		<foreach collection="list" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+	</select>
+
+	<select id="selectByCreateDay" resultType="java.lang.Long">
+		<![CDATA[
+		select institution_id
+		from institution
+		where create_day >= #{monday} and create_day <= #{sunday}
+		]]>
+	</select>
+
+	<select id="selectAllInsAmount" resultType="java.lang.Integer">
+		SELECT COUNT(institution_id) FROM institution where
+		institution_id IN (
+		<foreach collection="validIds" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+		and create_day BETWEEN "2000-01-01" and #{localDate}
+	</select>
+
+	<select id="selectIncrInsAmount" resultType="java.lang.Integer">
+		SELECT COUNT(institution_id) FROM institution where
+		institution_id IN (
+		<foreach collection="validIds" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+		and create_day = #{localDate}
+	</select>
+
+	<select id="selectInsLocInfo"
+			resultType="com.jointcorp.chronicdisease.data.resp.resourceresp.institution.InsLocPer">
+		select count(1) as provinceCount,province_name as provinceName from institution where
+		institution_id IN (
+		<foreach collection="validIds" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+		GROUP BY province_name
+	</select>
+
+
+	<select id="selectInsLocIncr"
+			resultType="com.jointcorp.chronicdisease.data.resp.resourceresp.institution.InsLocPer">
+		select count(1) as provinceCount,province_name as provinceName from institution where
+		institution_id IN (
+		<foreach collection="validIds" item="item" index="index" separator=",">
+			#{item}
+		</foreach>
+		)
+		and create_day = #{localDate}
+	</select>
+
+
+	<select id="selectSuperiorInst" resultType="java.lang.Long">
+		SELECT t2.institution_id AS institutionId
+		FROM
+		(
+			SELECT
+				@institutionId AS institutionId,
+				(SELECT @institutionId := parent_id
+					FROM institution
+					WHERE institution_id = institutionId
+				) AS parent_id
+			FROM
+				(SELECT @institutionId := #{institutionId}) AS vars, institution AS i
+			WHERE @institutionId <![CDATA[<>]]> 0
+		) AS t1
+		JOIN institution AS t2 ON t1.institutionId = t2.institution_id
+		ORDER BY institutionId ASC
+	</select>
+
+    <select id="selectInstIdAndName" resultType="com.jointcorp.chronicdisease.data.po.Institution">
+		SELECT institution_id as institutionId, institution_name as institutionName
+		FROM institution
+		WHERE institution_id IN
+		<foreach item="institutionId" collection="list" index="index" open="(" separator="," close=")">
+			#{institutionId}
+		</foreach>
+	</select>
+
+</mapper>
